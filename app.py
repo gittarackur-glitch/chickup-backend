@@ -86,9 +86,42 @@ def get_orders():
     orders = []
     for doc in orders_ref:
         order = doc.to_dict()
+        if order.get("status") == "delivered":
+            continue
         order["id"] = doc.id
         orders.append(order)
     return jsonify(orders), 200
+
+@app.route("/api/deliver/<order_id>", methods=["POST"])
+def mark_delivered(order_id):
+    data = request.get_json()
+    customer_email = data.get("email")
+
+    if not customer_email:
+        return jsonify({"error": "Missing email"}), 400
+
+    try:
+        db.collection("orders").document(order_id).update({"status": "delivered"})
+        
+        sender = os.getenv("EMAIL_SENDER")
+        password = os.getenv("EMAIL_PASSWORD")
+        
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = "Your Chick Up Order is on the way!"
+        msg["From"] = sender
+        msg["To"] = customer_email
+        
+        body = f"<h2>Chick Up</h2><p>Your order is on the way! Thank you for ordering!</p>"
+        msg.attach(MIMEText(body, "html"))
+        
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            server.login(sender, password)
+            server.sendmail(sender, [customer_email], msg.as_string())
+            
+        return jsonify({"message": "Order delivered and email sent!"}), 200
+    except Exception as e:
+        print("Error marking delivered:", e)
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/api/feedback", methods=["POST"])
 def send_feedback():
