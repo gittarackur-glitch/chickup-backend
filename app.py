@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app, origins=["https://chick-up.pages.dev", "http://localhost:3000"])  # allows your React frontend to call the API
+CORS(app)  # allows ANY frontend to call the API
 
 import json
 
